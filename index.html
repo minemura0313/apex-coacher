@@ -2,57 +2,420 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Apex Legends AI コーチングビューア</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX LEGENDS // AI COACHING SYSTEM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { background: #0f1015; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .container { max-width: 800px; width: 100%; }
-        h2 { color: #DA292A; border-bottom: 2px solid #DA292A; padding-bottom: 8px; }
-        .upload-box { background: #1a1c23; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed #DA292A; text-align: center; }
-        video { width: 100%; border-radius: 8px; border: 2px solid #DA292A; background: #000; }
-        .coach-overlay { display: none; background: rgba(218, 41, 42, 0.95); padding: 20px; border-radius: 8px; margin-top: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .coach-overlay.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        button { background: #fff; color: #DA292A; border: none; padding: 12px 24px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s; }
-        button:hover { background: #f0f0f0; }
-        .timeline-list { background: #1a1c23; padding: 15px; border-radius: 8px; margin-top: 20px; }
-        .timeline-item { margin: 8px 0; font-size: 14px; color: #ccc; }
+        :root {
+            --apex-red: #DA292A;
+            --apex-red-glow: rgba(218, 41, 42, 0.4);
+            --bg-dark: #0a0b0e;
+            --panel-bg: rgba(18, 20, 28, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(218, 41, 42, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(255, 183, 3, 0.05) 0%, transparent 40%),
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            color: var(--text-main);
+            font-family: 'Noto Sans JP', sans-serif;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .header {
+            max-width: 1000px;
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--apex-red);
+            padding-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-family: 'Teko', sans-serif;
+            font-size: 3rem;
+            letter-spacing: 3px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--apex-red-glow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 span {
+            color: var(--apex-red);
+        }
+
+        .badge {
+            background: var(--apex-red);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 900;
+            padding: 4px 10px;
+            clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+            letter-spacing: 1px;
+        }
+
+        .main-layout {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 850px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--apex-red);
+        }
+
+        /* 入力タブ・エリア */
+        .input-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--apex-red);
+            color: #fff;
+            border-color: var(--apex-red);
+        }
+
+        .input-section {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-section.active {
+            display: block;
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(218, 41, 42, 0.4);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            background: rgba(218, 41, 42, 0.03);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--apex-red);
+            background: rgba(218, 41, 42, 0.08);
+        }
+
+        .upload-zone input {
+            display: none;
+        }
+
+        .url-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .url-box input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .url-box button {
+            background: var(--apex-red);
+            color: #fff;
+            border: none;
+            padding: 0 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* 動画エリア */
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        /* オーバーレイ */
+        .coach-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 11, 14, 0.88);
+            backdrop-filter: blur(8px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .coach-overlay.active {
+            display: flex;
+        }
+
+        .coach-alert-tag {
+            color: var(--apex-red);
+            font-family: 'Teko', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px var(--apex-red-glow);
+        }
+
+        .coach-message {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 1rem 0 1.5rem;
+            max-width: 80%;
+            line-height: 1.6;
+        }
+
+        .btn-resume {
+            background: var(--apex-red);
+            color: #fff;
+            border: none;
+            font-weight: 900;
+            font-size: 1rem;
+            padding: 12px 28px;
+            clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--apex-red-glow);
+        }
+
+        /* タイムラインサイドバー */
+        .section-title {
+            font-family: 'Teko', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .timeline-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .time-stamp {
+            background: rgba(218, 41, 42, 0.2);
+            color: var(--apex-red);
+            font-family: 'Teko', sans-serif;
+            font-size: 1.1rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .add-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 1.5rem;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            padding-top: 1rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="number"], input[type="text"] {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        input[type="number"] { width: 90px; }
+        input[type="text"] { flex: 1; }
+
+        .btn-add {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Apex Legends AI コーチングビューア</h2>
-    
-    <div class="upload-box">
-        <p>Apexのプレイ動画ファイル（mp4など）を選択してください</p>
-        <input type="file" id="videoUpload" accept="video/*">
-    </div>
-    
-    <!-- 動画プレイヤー -->
-    <video id="apexVideo" controls></video>
+<div class="header">
+    <h1>APEX <span>COACHING</span> ANALYZER</h1>
+    <div class="badge">SYSTEM READY</div>
+</div>
 
-    <!-- AI解説表示パネル（一時停止時に出現） -->
-    <div id="coachOverlay" class="coach-overlay">
-        <h3 style="margin-top:0;">⚠️ 改善ポイント解説</h3>
-        <p id="coachText" style="font-size: 18px; font-weight: bold;"></p>
-        <button onclick="resumeVideo()">確認して再生を再開</button>
+<div class="main-layout">
+    <!-- 左側：入力＆動画エリア -->
+    <div>
+        <div class="input-tabs">
+            <button class="tab-btn active" onclick="switchTab('file')">📁 ファイルアップロード</button>
+            <button class="tab-btn" onclick="switchTab('url')">🔗 動画URL入力</button>
+        </div>
+
+        <!-- ファイル選択タブ -->
+        <div id="fileSection" class="input-section active">
+            <label class="upload-zone">
+                <p style="font-weight: bold; font-size: 1.05rem; color: #fff;">クリックしてPC内の動画を選択</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">MP4, WEBM 形式対応</p>
+                <input type="file" id="videoUpload" accept="video/*">
+            </label>
+        </div>
+
+        <!-- URL入力タブ -->
+        <div id="urlSection" class="input-section">
+            <div class="url-box">
+                <input type="text" id="videoUrlInput" placeholder="動画の直接リンク (例: https://example.com/video.mp4)">
+                <button onclick="loadVideoFromUrl()">読み込む</button>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">※GoogleドライブやDiscordなどの動画直リンクに対応しています。</p>
+        </div>
+
+        <!-- 動画プレイヤー -->
+        <div class="video-container">
+            <video id="apexVideo" controls></video>
+
+            <div id="coachOverlay" class="coach-overlay">
+                <div class="coach-alert-tag">⚠️ COMBAT ADVICE // 改善アドバイス</div>
+                <div id="coachText" class="coach-message">--</div>
+                <button class="btn-resume" onclick="resumeVideo()">再生を再開</button>
+            </div>
+        </div>
     </div>
 
-    <!-- タイムスタンプの設定一覧 -->
-    <div class="timeline-list">
-        <strong>📋 コーチングポイント設定：</strong>
-        <div class="timeline-item">⏱ 05.5秒: 全身を晒しすぎ。遮蔽物（頭出し）を意識</div>
-        <div class="timeline-item">⏱ 14.0秒: 漁夫の利の警戒。一旦引いてアーマー回復</div>
+    <!-- 右側：タイムスタンプ設定サイドバー -->
+    <div class="glass-card">
+        <div class="section-title">
+            <span>TIMELINE POINTS</span>
+            <span style="font-size: 0.9rem; color: var(--text-muted);" id="pointCount">2 points</span>
+        </div>
+
+        <div id="timelineList"></div>
+
+        <div class="add-form">
+            <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-muted);">ポイントを手動で追加</div>
+            <div class="input-group">
+                <input type="number" id="newTime" placeholder="秒数(例: 5.5)" step="0.1">
+                <input type="text" id="newText" placeholder="アドバイス内容を入力">
+            </div>
+            <button class="btn-add" onclick="addPoint()">+ リストに追加</button>
+        </div>
     </div>
 </div>
 
 <script>
     const video = document.getElementById('apexVideo');
     const upload = document.getElementById('videoUpload');
+    const urlInput = document.getElementById('videoUrlInput');
     const overlay = document.getElementById('coachOverlay');
     const coachText = document.getElementById('coachText');
+    const timelineList = document.getElementById('timelineList');
+    const pointCount = document.getElementById('pointCount');
 
-    // 動画ファイルを読み込んでプレイヤーにセット
+    let coachPoints = [
+        { time: 5.5, text: "被弾量が多すぎます！身体の7割を隠す「30/70ルール」を意識して頭出しで撃ち合いましょう。" },
+        { time: 14.0, text: "サードパーティ（漁夫）が接近するタイミングです。一旦戦闘を離脱してセル・バッテリーを巻いてください。" }
+    ];
+
+    let triggeredPoints = new Set();
+    let isPausedByCoach = false;
+
+    renderTimeline();
+
+    // タブ切り替え
+    function switchTab(type) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.input-section').forEach(sec => sec.classList.remove('active'));
+        
+        if(type === 'file') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('fileSection').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('urlSection').classList.add('active');
+        }
+    }
+
+    // ファイルから読み込み
     upload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -61,45 +424,47 @@
         }
     });
 
-    // 「どの秒数で何を喋るか」のリスト（ここを書き換えて調整できます）
-    const coachPoints = [
-        { time: 5.5, text: "ここで全身を晒しすぎです。遮蔽物を使った頭出しを意識しましょう。" },
-        { time: 14.0, text: "周囲から敵が来るタイミングです。一度引いてアーマーを巻きましょう。" }
-    ];
+    // URLから読み込み
+    function loadVideoFromUrl() {
+        const url = urlInput.value.trim();
+        if (url) {
+            video.src = url;
+            triggeredPoints.clear();
+        } else {
+            alert('有効なURLを入力してください');
+        }
+    }
 
-    let triggeredPoints = new Set();
-    let isPausedByCoach = false;
-
-    // 再生時間が進むたびにチェック
+    // 動画再生監視
     video.addEventListener('timeupdate', () => {
         if (isPausedByCoach) return;
         const currentTime = video.currentTime;
 
         coachPoints.forEach(point => {
             if (!triggeredPoints.has(point.time) && Math.abs(currentTime - point.time) < 0.4) {
-                video.pause(); // 動画をピタッとストップ
+                video.pause();
                 isPausedByCoach = true;
                 coachText.textContent = point.text;
-                overlay.classList.add('active'); // パネルを表示
+                overlay.classList.add('active');
                 
-                speakAdvice(point.text); // ブラウザの音声合成で喋る
+                speakAdvice(point.text);
                 triggeredPoints.add(point.time);
             }
         });
     });
 
-    // ブラウザ標準の音声合成でアドバイスを読み上げる（無料・API不要）
+    // 音声読み上げ
     function speakAdvice(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ja-JP';
-            utterance.rate = 1.15; // 少しきき取りやすい速度
+            utterance.rate = 1.1;
             window.speechSynthesis.speak(utterance);
         }
     }
 
-    // 「確認して再生を再開」ボタンを押したときの処理
+    // 再生再開
     function resumeVideo() {
         overlay.classList.remove('active');
         isPausedByCoach = false;
@@ -107,6 +472,50 @@
             window.speechSynthesis.cancel();
         }
         video.play();
+    }
+
+    // タイムスタンプ追加
+    function addPoint() {
+        const timeVal = parseFloat(document.getElementById('newTime').value);
+        const textVal = document.getElementById('newText').value.trim();
+
+        if (isNaN(timeVal) || !textVal) {
+            alert('秒数とアドバイス内容を正しく入力してください');
+            return;
+        }
+
+        coachPoints.push({ time: timeVal, text: textVal });
+        coachPoints.sort((a, b) => a.time - b.time);
+        
+        document.getElementById('newTime').value = '';
+        document.getElementById('newText').value = '';
+        
+        renderTimeline();
+    }
+
+    // タイムスタンプ削除
+    function deletePoint(index) {
+        coachPoints.splice(index, 1);
+        renderTimeline();
+    }
+
+    // タイムライン描画
+    function renderTimeline() {
+        timelineList.innerHTML = '';
+        pointCount.textContent = `${coachPoints.length} points`;
+
+        coachPoints.forEach((point, idx) => {
+            const item = document.createElement('div');
+            item.className = 'timeline-item';
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+                    <span class="time-stamp">${point.time.toFixed(1)}s</span>
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${point.text}</span>
+                </div>
+                <button onclick="deletePoint(${idx})" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem; padding:0 4px;">×</button>
+            `;
+            timelineList.appendChild(item);
+        });
     }
 </script>
 
