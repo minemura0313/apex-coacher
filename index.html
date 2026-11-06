@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Apex Legends AI コーチングビューア</title>
+    <style>
+        body { background: #0f1015; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .container { max-width: 800px; width: 100%; }
+        h2 { color: #DA292A; border-bottom: 2px solid #DA292A; padding-bottom: 8px; }
+        .upload-box { background: #1a1c23; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed #DA292A; text-align: center; }
+        video { width: 100%; border-radius: 8px; border: 2px solid #DA292A; background: #000; }
+        .coach-overlay { display: none; background: rgba(218, 41, 42, 0.95); padding: 20px; border-radius: 8px; margin-top: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .coach-overlay.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        button { background: #fff; color: #DA292A; border: none; padding: 12px 24px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #f0f0f0; }
+        .timeline-list { background: #1a1c23; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .timeline-item { margin: 8px 0; font-size: 14px; color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Apex Legends AI コーチングビューア</h2>
+    
+    <div class="upload-box">
+        <p>Apexのプレイ動画ファイル（mp4など）を選択してください</p>
+        <input type="file" id="videoUpload" accept="video/*">
+    </div>
+    
+    <!-- 動画プレイヤー -->
+    <video id="apexVideo" controls></video>
+
+    <!-- AI解説表示パネル（一時停止時に出現） -->
+    <div id="coachOverlay" class="coach-overlay">
+        <h3 style="margin-top:0;">⚠️ 改善ポイント解説</h3>
+        <p id="coachText" style="font-size: 18px; font-weight: bold;"></p>
+        <button onclick="resumeVideo()">確認して再生を再開</button>
+    </div>
+
+    <!-- タイムスタンプの設定一覧 -->
+    <div class="timeline-list">
+        <strong>📋 コーチングポイント設定：</strong>
+        <div class="timeline-item">⏱ 05.5秒: 全身を晒しすぎ。遮蔽物（頭出し）を意識</div>
+        <div class="timeline-item">⏱ 14.0秒: 漁夫の利の警戒。一旦引いてアーマー回復</div>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('apexVideo');
+    const upload = document.getElementById('videoUpload');
+    const overlay = document.getElementById('coachOverlay');
+    const coachText = document.getElementById('coachText');
+
+    // 動画ファイルを読み込んでプレイヤーにセット
+    upload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            video.src = URL.createObjectURL(file);
+            triggeredPoints.clear();
+        }
+    });
+
+    // 「どの秒数で何を喋るか」のリスト（ここを書き換えて調整できます）
+    const coachPoints = [
+        { time: 5.5, text: "ここで全身を晒しすぎです。遮蔽物を使った頭出しを意識しましょう。" },
+        { time: 14.0, text: "周囲から敵が来るタイミングです。一度引いてアーマーを巻きましょう。" }
+    ];
+
+    let triggeredPoints = new Set();
+    let isPausedByCoach = false;
+
+    // 再生時間が進むたびにチェック
+    video.addEventListener('timeupdate', () => {
+        if (isPausedByCoach) return;
+        const currentTime = video.currentTime;
+
+        coachPoints.forEach(point => {
+            if (!triggeredPoints.has(point.time) && Math.abs(currentTime - point.time) < 0.4) {
+                video.pause(); // 動画をピタッとストップ
+                isPausedByCoach = true;
+                coachText.textContent = point.text;
+                overlay.classList.add('active'); // パネルを表示
+                
+                speakAdvice(point.text); // ブラウザの音声合成で喋る
+                triggeredPoints.add(point.time);
+            }
+        });
+    });
+
+    // ブラウザ標準の音声合成でアドバイスを読み上げる（無料・API不要）
+    function speakAdvice(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 1.15; // 少しきき取りやすい速度
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    // 「確認して再生を再開」ボタンを押したときの処理
+    function resumeVideo() {
+        overlay.classList.remove('active');
+        isPausedByCoach = false;
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        video.play();
+    }
+</script>
+
+</body>
+</html>
